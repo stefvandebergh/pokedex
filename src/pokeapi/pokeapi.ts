@@ -1,10 +1,22 @@
-export class PokeAPI {
-  private static readonly baseURL = "https://pokeapi.co/api/v2";
+import {Cache} from "../pokecache.js"
 
-  constructor() {}
+export class PokeAPI {
+    #cache : Cache;
+
+    private static readonly baseURL = "https://pokeapi.co/api/v2";
+    private static readonly interval = 3600000; // 1 hour
+
+  constructor() {
+    this.#cache = new Cache(PokeAPI.interval);
+  }
 
   async fetchLocations(pageURL?: string): Promise<ShallowLocations> {
     const url = pageURL ? pageURL : `${PokeAPI.baseURL}/location-area/`;
+
+    if (this.#cache.get<ShallowLocations>(url)) {
+        return this.#cache.get<ShallowLocations>(url) as ShallowLocations;
+    }
+
 
     const result = await fetch(url);
     const json =await result.json();
@@ -14,6 +26,11 @@ export class PokeAPI {
         name: location.name,
       });
     };
+    this.#cache.add<ShallowLocations>(url, {
+        locations,
+        next: json.next,
+        previous: json.previous
+    });
     return {
         locations,
         next: json.next,
